@@ -1,7 +1,7 @@
 """
 ESP32 Wi-Fi CSI Raw Data Parser.
-Supports parsing format from `csi_logger.py`, `csi_visualization.py`, and `.npy` recordings.
-Handles both `CSI_DATA, frame, rssi, noise, len, "I Q", "I Q", ...` and bracketed `[r0, i0, r1, i1, ...]`.
+Supports parsing format from `csi_logger.py`, `csi_visualization.py`, PDF raw logs, and `.npy` recordings.
+Handles `CSI,packet_idx,timestamp,rssi,len,[i0 q0 i1 q1 ...]` and `CSI_DATA, frame, rssi, noise, len, "I Q", "I Q", ...`.
 """
 
 import numpy as np
@@ -20,10 +20,10 @@ class ESP32S3CSIParser:
 
     def parse_line(self, line: str) -> Tuple[np.ndarray, np.ndarray, int]:
         """
-        Parses a single serial log line from ESP32 CSI logger.
+        Parses a single serial log line from ESP32 CSI logger or PDF logs.
         Supports both:
           1) csi_logger.py format: CSI_DATA,frame,rssi,noise,len, "I0 Q0", "I1 Q1", ...
-          2) csi_visualization.py format: CSI,timestamp,rssi,... [r0, i0, r1, i1, ...]
+          2) csi_visualization.py / PDF format: CSI,packet_idx,timestamp,rssi,len,[i0 q0 i1 q1 ...]
           
         Returns:
             amp: 1D float32 array of shape (n_subcarriers,)
@@ -34,12 +34,20 @@ class ESP32S3CSIParser:
         if not line or not (line.startswith("CSI_DATA,") or line.startswith("CSI,")):
             return None, None, None
 
-        # Format 1: Bracketed format CSI,timestamp,rssi,... [r0, i0, r1, i1, ...]
+        # Format 1: Bracketed format CSI,packet_idx,timestamp,rssi,len,[i0 q0 i1 q1 ...]
         if "[" in line and "]" in line:
             header, values = line.split("[", 1)
             values = values.split("]", 1)[0]
-            header_parts = header.split(",")
-            rssi = int(header_parts[2]) if len(header_parts) > 2 and header_parts[2].lstrip('-').isdigit() else 0
+            header_parts = [p.strip() for p in header.split(",") if p.strip()]
+
+            # Extract RSSI (usually index 3 in CSI,idx,timestamp,rssi,len format, or index 2 in CSI_DATA)
+            rssi = 0
+            for hp in header_parts:
+                if hp.lstrip('-').isdigit():
+                    val = int(hp)
+                    if -110 <= val <= 0:  # Typical Wi-Fi RSSI range dBm
+                        rssi = val
+                        break
 
             numbers = [int(x) for x in re.findall(r"-?\d+", values)]
             if len(numbers) < 2:
@@ -78,15 +86,13 @@ class ESP32S3CSIParser:
                 except ValueError:
                     continue
             elif len(nums) == 1 and tok.lstrip('-').isdigit():
-                # Single comma token in fallback
                 iq_list.append(int(nums[0]))
 
         if len(iq_list) == 0:
             return None, None, None
 
-        # Handle flat list vs paired tuple list
         if isinstance(iq_list[0], tuple):
-            iq = np.array(iq_list, dtype=np.int16)  # (n_sub, 2)
+            iq = np.array(iq_list, dtype=np.int16)
             amp = np.sqrt(iq[:, 0].astype(np.float32)**2 + iq[:, 1].astype(np.float32)**2)
             return amp, iq, rssi
         else:
@@ -121,13 +127,13 @@ class ESP32S3CSIParser:
 
         if not amp_list:
             n_sub = self.num_subcarriers or 64
-            return np.zeros((1, n_sub), dtype=np.float32), np.zeros((1, n_sub, 2), dtype=np.int16), np.zeros((1,), dtype=np.int32)
+            return np.zeros((1, n_sub), dtype=np.float32), np.zeros((1, n_sub, 2), dtype=np.int16), np.zeros((1,), dtype=np.int64)
 
         # Truncate to minimum subcarrier count across frames if variable
         min_sub = min(a.shape[0] for a in amp_list)
         amp_arr = np.array([a[:min_sub] for a in amp_list], dtype=np.float32)
         iq_arr = np.array([q[:min_sub] for q in iq_list], dtype=np.int16)
-        rssi_arr = np.array(rssi_list, dtype=np.int32)
+        rssi_arr = np.array(rssi_list, dtype=np.int64)
 
         return amp_arr, iq_arr, rssi_arr
 
