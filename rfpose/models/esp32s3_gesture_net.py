@@ -1,7 +1,7 @@
 """
 ESP32 Wi-Fi CSI Gesture Recognition Network (ESP32S3GestureNet).
 Architecture: 1D Spatial CNN -> Bidirectional LSTM (Bi-LSTM) -> Fully Connected ANN Classifier.
-Configured for RadioVision gestures: ['push', 'swipe-left', 'swipe-right', 'idle'].
+Configured for RadioVision target gestures: ['sitting', 'moving right', 'swipe up', 'raise hand'].
 """
 
 import torch
@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, List
 
-DEFAULT_RADIOVISION_GESTURES = ["push", "swipe-left", "swipe-right", "idle"]
+DEFAULT_RADIOVISION_GESTURES = ["sitting", "moving right", "swipe up", "raise hand"]
 
 
 class ESP32S3GestureNet(nn.Module):
@@ -34,8 +34,8 @@ class ESP32S3GestureNet(nn.Module):
     ):
         super().__init__()
         self.in_subcarriers = in_subcarriers
-        self.num_gestures = num_gestures
-        self.gesture_labels = gesture_labels
+        self.num_gestures = len(gesture_labels) if gesture_labels else num_gestures
+        self.gesture_labels = gesture_labels or DEFAULT_RADIOVISION_GESTURES
 
         # 1. 1D Spatial CNN Feature Extractor (Processes subcarrier spatial correlations per timestep)
         cnn_layers = []
@@ -72,7 +72,7 @@ class ESP32S3GestureNet(nn.Module):
             nn.BatchNorm1d(64),
             nn.ReLU(inplace=True),
             nn.Dropout(p=dropout_prob / 2.0),
-            nn.Linear(64, num_gestures)
+            nn.Linear(64, self.num_gestures)
         )
 
     def forward(self, csi_tensor: torch.Tensor) -> torch.Tensor:

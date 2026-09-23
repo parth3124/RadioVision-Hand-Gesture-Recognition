@@ -1,5 +1,4 @@
-fist
-ok
-palm
-peace
-thumbs_up
+sitting
+moving right
+swipe up
+raise hand
