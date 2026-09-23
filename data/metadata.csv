@@ -1,0 +1,9 @@
+label,file,datapoint_file,n_frames,n_sub,rssi_mean,timestamp
+sitting,data/raw/sitting/sitting_0.npy,data/processed_dataset/sitting_0_datapoint.npy,42,64,-50.0,2026-09-23 19:14:34
+moving right,data/raw/moving right/moving right_0.npy,data/processed_dataset/moving right_0_datapoint.npy,42,64,-50.0,2026-09-23 19:14:38
+swipe up,data/raw/swipe up/swipe up_0.npy,data/processed_dataset/swipe up_0_datapoint.npy,42,64,-50.0,2026-09-23 19:14:42
+raise hand,data/raw/raise hand/raise hand_0.npy,data/processed_dataset/raise hand_0_datapoint.npy,41,64,-50.0,2026-09-23 19:14:46
+sitting,data/raw/sitting/sitting_1.npy,data/processed_dataset/sitting_1_datapoint.npy,42,64,-50.0,2026-09-23 19:15:50
+moving right,data/raw/moving right/moving right_1.npy,data/processed_dataset/moving right_1_datapoint.npy,41,64,-50.0,2026-09-23 19:15:54
+swipe up,data/raw/swipe up/swipe up_1.npy,data/processed_dataset/swipe up_1_datapoint.npy,42,64,-50.0,2026-09-23 19:15:58
+raise hand,data/raw/raise hand/raise hand_1.npy,data/processed_dataset/raise hand_1_datapoint.npy,40,64,-50.0,2026-09-23 19:16:02
